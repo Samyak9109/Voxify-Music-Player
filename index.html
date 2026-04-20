@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voxify - Web Player: Music for everyone</title>
+    <link rel="stylesheet" href="css/utility.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container flex bg-black">
+
+        <!-- ── LEFT SIDEBAR ── -->
+        <div class="left">
+            <div class="home bg-gray rounded m-1 p-1">
+                <ul>
+                    <div class="logo">
+                        <img src="img/logo.png" alt="logo">
+                    </div>
+                    <li>
+                        <img class="invert" src="img/home.svg" alt="home">Home
+                    </li>
+                    <li>
+                        <img class="invert" src="img/search.svg" alt="search">Search
+                    </li>
+                </ul>
+            </div>
+
+            <div class="library bg-gray rounded m-1 p-1">
+                <div class="heading">
+                    <img class="invert" src="img/playlist.svg" alt="library">
+                    <h2>Your Library</h2>
+                </div>
+                <div class="songList">
+                    <ul id="libraryList"></ul>
+                </div>
+                <div class="footer">
+                    <div><a href="https://www.Voxify.com/jp/legal/"><span>Legal</span></a></div>
+                    <div><a href="https://www.Voxify.com/jp/privacy/"><span>Privacy Center</span></a></div>
+                    <div><a href="https://www.Voxify.com/jp/legal/privacy-policy/"><span>Privacy Policy</span></a>
+                    </div>
+                    <div><a href="https://www.Voxify.com/jp/legal/cookies-policy/"><span>Cookies</span></a></div>
+                    <div><a href="https://www.Voxify.com/jp/legal/privacy-policy/#s3"><span>About Ads</span></a></div>
+                    <div><a href="https://www.Voxify.com/jp/accessibility/"><span>Accessibility</span></a></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── RIGHT MAIN ── -->
+        <div class="right bg-grey rounded">
+
+            <div class="header">
+                <div class="nav">
+                    <div class="hamburgerContainer">
+                        <img width="40" class="invert hamburger" src="img/hamburger.svg" alt="menu">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            title="Back">
+                            <path
+                                d="M15 6L9.70711 11.2929C9.37377 11.6262 9.20711 11.7929 9.20711 12C9.20711 12.2071 9.37377 12.3738 9.70711 12.7071L15 18"
+                                stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            title="Forward">
+                            <path
+                                d="M9 18L14.2929 12.7071C14.6262 12.3738 14.7929 12.2071 14.7929 12C14.7929 11.7929 14.6262 11.6262 14.2929 11.2929L9 6"
+                                stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="buttons">
+                    <button class="signupbtn">Sign up</button>
+                    <button class="loginbtn">Log in</button>
+                </div>
+            </div>
+
+            <div class="VoxifyPlaylists">
+                <h1>Voxify Playlists</h1>
+                <div class="cardContainer" id="cardContainer">
+                    <div class="card">
+                        <div class="play">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+                                <circle cx="30" cy="30" r="30" fill="#22c55e" />
+                                <path
+                                    d="M38.8906 30.846C38.5371 32.189 36.8667 33.138 33.5257 35.0361C30.296 36.8709 28.6812 37.7884 27.37983 37.4196C26.8418 37.2671 26.35159 36.9776 25.95624 36.5787C25 35.6139 25 33.7426 25 30C25 26.2574 25 24.3861 25.95624 23.42132C26.35159 23.02245 26.8418 22.73288 27.37983 22.58042C28.6812 22.21165 30.296 23.12907 33.5257 24.96393C36.8667 26.86197 38.5371 27.811 38.8906 29.154C39.0365 29.7084 39.0365 30.2916 38.8906 30.846Z"
+                                    fill="#000000" stroke="#000000" stroke-width="1.5" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+
+                        <img src="songs/Bright_(mood)/cover.jpg" alt="">
+                        <h2>Happy Hits</h2>
+                        <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, pariatur.</p>
+                    </div>
+                </div>
+
+                <div class="playbar">
+                    <div class="seekbar" id="seekbar">
+                        <div class="seekbar-fill" id="seekbarFill"></div>
+                        <div class="circle"></div>
+                    </div>
+                    <div class="abovebar">
+                        <div class="songinfo" id="songinfo">
+                            <div class="songinfo-art" id="songinfoArt"></div>
+                            <div class="songinfo-text">
+                                <span class="songinfo-title" id="songinfoTitle">—</span>
+                                <span class="songinfo-artist" id="songinfoArtist">Select a playlist</span>
+                            </div>
+                            <button class="songinfo-like" title="Save to Your Library">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b3b3b3"
+                                    stroke-width="2">
+                                    <path
+                                        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="songbuttons">
+                            <img id="previous" src="img/prevsong.svg" alt="Previous">
+                            <img id="play" src="img/play.svg" alt="Play/Pause">
+                            <img id="next" src="img/nextsong.svg" alt="Next">
+                        </div>
+
+                        <div class="timevol">
+                            <div class="songtime" id="songtime">0:00 / 0:00</div>
+                            <div class="volume">
+                                <img src="img/volume.svg" alt="Volume">
+                                <div class="range">
+                                    <input type="range" name="volume" id="volumeRange" min="0" max="100" value="70">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+
+</html>
