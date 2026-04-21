@@ -521,9 +521,26 @@ body {
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* Like button color fix */
 .songinfo-like svg {
     display: block;
+    transition: transform 0.15s;
 }
+
+.songinfo-like svg path {
+    transition: fill 0.2s, stroke 0.2s;
+}
+
+.songinfo-like.liked svg path {
+    fill: #e8115b !important;
+    stroke: #e8115b !important;
+}
+
+.songinfo-like:not(.liked) svg path {
+    fill: none !important;
+    stroke: #b3b3b3 !important;
+}
+
 
 .songbuttons {
     display: flex;
