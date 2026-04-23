@@ -2,6 +2,7 @@
 let currentSong = new Audio();
 let songs = [];
 let currFolder = "";
+let likedSongs = JSON.parse(localStorage.getItem("voxify-liked") || "[]");
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function secondsToMinutesSeconds(seconds) {
@@ -11,26 +12,86 @@ function secondsToMinutesSeconds(seconds) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+function cleanSongName(raw) {
+  return decodeURIComponent(raw)
+    .replace(/\.mp3$/i, "")           // remove .mp3
+    .replace(/Ytmp3\.gg_YouTube_/i, "") // remove "Ytmp3.gg_YouTube_"
+    .replace(/_\d{3}_\d+k$/i, "")     // remove trailing _009_128k etc
+    .replace(/[-_]/g, " ")            // underscores/dashes → spaces
+    .replace(/\s+/g, " ")             // collapse multiple spaces
+    .trim();
+}
+
+// ─── Liked Songs ─────────────────────────────────────────────────────────────
+function saveLiked() {
+  localStorage.setItem("voxify-liked", JSON.stringify(likedSongs));
+}
+
+function isLiked(key) {
+  return likedSongs.includes(key);
+}
+
+function toggleLike(key) {
+  if (!key || key === "—") return;
+  if (isLiked(key)) {
+    likedSongs = likedSongs.filter((s) => s !== key);
+  } else {
+    likedSongs.push(key);
+  }
+  saveLiked();
+  updateLikeButton(key);
+  updateLikedCardCount();
+}
+
+function updateLikedCardCount() {
+  const el = document.getElementById("likedCount");
+  if (el) {
+    el.textContent = `${likedSongs.length} liked song${likedSongs.length !== 1 ? "s" : ""}`;
+  }
+}
+
+function updateLikeButton(track) {
+  const btn = document.querySelector(".songinfo-like");
+  if (!btn) return;
+
+  const key = `${currFolder}/${decodeURIComponent(track)}`;
+  const liked = isLiked(key);
+
+  // Set the SVG once (no more innerHTML swapping)
+  btn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>`;
+
+  // Toggle class — CSS handles the color
+  if (liked) {
+    btn.classList.add("liked");
+  } else {
+    btn.classList.remove("liked");
+  }
+
+  btn.title = liked ? "Remove from Liked Songs" : "Save to Liked Songs";
+  btn.style.transform = "scale(1.3)";
+  setTimeout(() => (btn.style.transform = "scale(1)"), 150);
+}
+
+// ─── Song Info (bottom bar) ───────────────────────────────────────────────────
 function updateSongInfo(track) {
-  // Title: strip .mp3, decode URI, replace underscores/dashes
-  const title = decodeURIComponent(track)
-    .replace(/\.mp3$/i, "")
-    .replaceAll("_", " ")
-    .replaceAll("-", " ");
+  const title = cleanSongName(track);  // ← use cleaner instead of manual replace
 
   document.getElementById("songinfoTitle").textContent = title;
   document.getElementById("songinfoArtist").textContent = currFolder
-    .split("/")
-    .pop()
+    .split("/").pop()
     .replaceAll("_", " ")
     .replaceAll("(", "")
     .replaceAll(")", "");
 
-  // Album art — try cover.jpg from the current folder
   const art = document.getElementById("songinfoArt");
   art.style.backgroundImage = `url('/songs/${currFolder}/cover.jpg')`;
   art.style.backgroundSize = "cover";
   art.style.backgroundPosition = "center";
+
+  updateLikeButton(track);
 }
 
 function updateSeekbar(percent) {
@@ -38,7 +99,7 @@ function updateSeekbar(percent) {
   document.querySelector(".circle").style.left = percent + "%";
 }
 
-// ─── Core: fetch song list from a folder ─────────────────────────────────────
+// ─── Fetch songs from folder ──────────────────────────────────────────────────
 async function getSongs(folder) {
   currFolder = folder;
   try {
@@ -47,12 +108,11 @@ async function getSongs(folder) {
     const div = document.createElement("div");
     div.innerHTML = text;
 
-    // Grab every anchor that ends with .mp3
     songs = Array.from(div.getElementsByTagName("a"))
       .filter((a) => a.href.endsWith(".mp3"))
       .map((a) => decodeURIComponent(a.href.split(`/${folder}/`)[1]));
   } catch (err) {
-    console.warn("Could not fetch songs from server — using empty list.", err);
+    console.warn("Could not fetch songs:", err);
     songs = [];
   }
 
@@ -60,7 +120,7 @@ async function getSongs(folder) {
   return songs;
 }
 
-// ─── Render song list in the sidebar ─────────────────────────────────────────
+// ─── Render sidebar song list ─────────────────────────────────────────────────
 function renderSongList() {
   const ul = document.querySelector("#libraryList");
   ul.innerHTML = "";
@@ -70,8 +130,8 @@ function renderSongList() {
     return;
   }
 
-  songs.forEach((song, index) => {
-    const displayName = song.replace(/\.mp3$/i, "").replaceAll("%20", " ");
+  songs.forEach((song) => {
+    const displayName = cleanSongName(song);  // ← cleaned name
     const li = document.createElement("li");
     li.innerHTML = `
       <img class="invert" width="34" src="img/music.svg" alt="music">
@@ -101,7 +161,7 @@ function playMusic(track, autoPlay = true) {
     document.getElementById("play").src = "img/pause.svg";
   }
 
-  // Highlight active song in list
+  // Highlight active song in sidebar
   document.querySelectorAll("#libraryList li").forEach((li, i) => {
     const isActive = songs[i] === track;
     li.style.background = isActive ? "#282828" : "";
@@ -109,7 +169,52 @@ function playMusic(track, autoPlay = true) {
   });
 }
 
-// ─── Render playlist cards ────────────────────────────────────────────────────
+// ─── Liked Songs Playlist ────────────────────────────────────────────────────
+function loadLikedPlaylist() {
+  if (likedSongs.length === 0) {
+    alert("You haven't liked any songs yet! Hit the ❤️ while a song plays.");
+    return;
+  }
+
+  const ul = document.querySelector("#libraryList");
+  ul.innerHTML = "";
+
+  likedSongs.forEach((key) => {
+    const parts = key.split("/");
+    const folder = parts[0];
+    const file = parts.slice(1).join("/");
+    const displayName = cleanSongName(file);
+
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#1ed760" style="flex-shrink:0">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+      <div class="info">
+        <div>${displayName}</div>
+        <div style="color:#b3b3b3;font-size:11px;">${folder.replaceAll("_", " ")}</div>
+      </div>
+      <div class="playnow">
+        <img class="invert" src="img/play.svg" alt="play" width="16">
+      </div>`;
+
+    li.addEventListener("click", () => {
+      currFolder = folder;
+      songs = likedSongs.map((k) => k.split("/").slice(1).join("/"));
+      playMusic(file);
+    });
+
+    ul.appendChild(li);
+  });
+
+  // Autoplay first liked song
+  const first = likedSongs[0].split("/");
+  currFolder = first[0];
+  songs = likedSongs.map((k) => k.split("/").slice(1).join("/"));
+  playMusic(first.slice(1).join("/"));
+}
+
+// ─── Discover & render playlist cards ────────────────────────────────────────
 async function displayAlbums() {
   try {
     const res = await fetch(`/songs/`);
@@ -117,18 +222,15 @@ async function displayAlbums() {
     const div = document.createElement("div");
     div.innerHTML = text;
 
-    // Get all folder links (directories end with /)
     const folders = Array.from(div.getElementsByTagName("a"))
       .filter((a) => a.href.includes("/songs/") && a.href.endsWith("/"))
-      .map((a) => {
-        const parts = a.href.split("/songs/")[1].split("/");
-        return parts[0]; // folder name
-      })
+      .map((a) => a.href.split("/songs/")[1].replace("/", ""))
       .filter((f) => f && f !== "");
 
     const container = document.getElementById("cardContainer");
-    container.innerHTML = ""; // Clear static card
+    container.innerHTML = "";
 
+    // Regular playlist cards
     for (const folder of folders) {
       const displayName = folder
         .replaceAll("_", " ")
@@ -143,19 +245,17 @@ async function displayAlbums() {
             <path d="M5 20V4L19 12L5 20Z" stroke="#141B34" fill="#000" stroke-width="1.5" stroke-linejoin="round"/>
           </svg>
         </div>
-        <img src="/songs/${folder}/cover.jpg" 
-             onerror="this.src='img/music.svg';this.style.padding='30px';this.style.background='#282828'" 
+        <img src="/songs/${folder}/cover.jpg"
+             onerror="this.src='img/music.svg';this.style.padding='30px';this.style.background='#282828'"
              alt="${displayName}">
         <h2>${displayName}</h2>
         <p>Click to play this playlist</p>`;
 
-      // Clicking the card loads that folder
       card.addEventListener("click", async () => {
         await getSongs(folder);
         if (songs.length > 0) playMusic(songs[0]);
       });
 
-      // The green play button also triggers the same action
       card.querySelector(".play").addEventListener("click", async (e) => {
         e.stopPropagation();
         await getSongs(folder);
@@ -165,11 +265,33 @@ async function displayAlbums() {
       container.appendChild(card);
     }
 
-    // Fallback: if server directory listing isn't available, show the static card
+    // ── Liked Songs card ──
+    const likedCard = document.createElement("div");
+    likedCard.className = "card";
+    likedCard.innerHTML = `
+      <div class="play">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 20V4L19 12L5 20Z" stroke="#141B34" fill="#000" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="
+        width:100%; aspect-ratio:1; border-radius:5px; margin-bottom:12px;
+        background: linear-gradient(135deg, #450af5, #c4efd9);
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="#fff">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </div>
+      <h2>Liked Songs</h2>
+      <p id="likedCount">${likedSongs.length} liked song${likedSongs.length !== 1 ? "s" : ""}</p>`;
+
+    likedCard.addEventListener("click", loadLikedPlaylist);
+    container.appendChild(likedCard);
+
     if (folders.length === 0) addFallbackCard(container);
   } catch (err) {
     console.warn("Could not auto-discover albums:", err);
-    // Keep the existing static card from HTML as fallback
   }
 }
 
@@ -177,7 +299,7 @@ function addFallbackCard(container) {
   container.innerHTML = `
     <div class="card" id="fallbackCard">
       <div class="play">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path d="M5 20V4L19 12L5 20Z" stroke="#141B34" fill="#000" stroke-width="1.5" stroke-linejoin="round"/>
         </svg>
       </div>
@@ -194,10 +316,7 @@ function addFallbackCard(container) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  // 1. Try to discover and render album cards
   await displayAlbums();
-
-  // 2. Load default playlist into sidebar (won't autoplay)
   await getSongs("Bright_(mood)");
 
   // ── Play / Pause ──
@@ -212,32 +331,29 @@ async function main() {
     }
   });
 
-  // ── Time update → seekbar + clock ──
+  // ── Time update ──
   currentSong.addEventListener("timeupdate", () => {
     const current = currentSong.currentTime;
     const total = currentSong.duration;
     if (!isNaN(total) && total > 0) {
-      const percent = (current / total) * 100;
-      updateSeekbar(percent);
+      updateSeekbar((current / total) * 100);
       document.getElementById("songtime").textContent =
         `${secondsToMinutesSeconds(current)} / ${secondsToMinutesSeconds(total)}`;
     }
   });
 
-  // ── Auto-advance to next song ──
+  // ── Auto next ──
   currentSong.addEventListener("ended", () => {
-    const idx = songs.indexOf(decodeURIComponent(
-      currentSong.src.split("/").pop()
-    ));
+    const filename = decodeURIComponent(currentSong.src.split("/").pop());
+    const idx = songs.indexOf(filename);
     if (idx + 1 < songs.length) {
       playMusic(songs[idx + 1]);
     } else {
-      // Last song — reset play button
       document.getElementById("play").src = "img/play.svg";
     }
   });
 
-  // ── Seekbar click ──
+  // ── Seekbar ──
   document.getElementById("seekbar").addEventListener("click", (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = ((e.clientX - rect.left) / rect.width) * 100;
@@ -264,25 +380,33 @@ async function main() {
   document.getElementById("volumeRange").addEventListener("input", (e) => {
     const vol = parseInt(e.target.value) / 100;
     currentSong.volume = vol;
-    const volImg = document.querySelector(".volume > img");
-    volImg.src = vol === 0 ? "img/mute.svg" : "img/volume.svg";
+    document.querySelector(".volume > img").src =
+      vol === 0 ? "img/mute.svg" : "img/volume.svg";
   });
 
-  // ── Volume icon mute toggle ──
+  // ── Mute toggle ──
   document.querySelector(".volume > img").addEventListener("click", (e) => {
-    const volSlider = document.getElementById("volumeRange");
+    const slider = document.getElementById("volumeRange");
     if (e.target.src.includes("volume.svg")) {
       e.target.src = "img/mute.svg";
       currentSong.volume = 0;
-      volSlider.value = 0;
+      slider.value = 0;
     } else {
       e.target.src = "img/volume.svg";
       currentSong.volume = 0.7;
-      volSlider.value = 70;
+      slider.value = 70;
     }
   });
 
-  // ── Hamburger (mobile) — open sidebar ──
+  // ── Like button ──
+  document.querySelector(".songinfo-like").addEventListener("click", () => {
+    const filename = decodeURIComponent(currentSong.src.split("/").pop());
+    if (!filename) return;
+    const key = `${currFolder}/${filename}`;
+    toggleLike(key);
+  });
+
+  // ── Hamburger (mobile) ──
   document.querySelector(".hamburger").addEventListener("click", () => {
     const left = document.querySelector(".left");
     left.style.cssText = `
@@ -296,7 +420,7 @@ async function main() {
       background: #121212;`;
   });
 
-  // ── Close sidebar when clicking outside it on mobile ──
+  // ── Close sidebar on mobile ──
   document.querySelector(".right").addEventListener("click", () => {
     if (window.innerWidth <= 680) {
       document.querySelector(".left").style.cssText = "display: none !important;";
